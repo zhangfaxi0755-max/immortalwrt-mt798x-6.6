@@ -15,27 +15,32 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential clang flex bison g++ gawk gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev
 
-      - name: 更新插件源
+      - name: 强制注入插件源
         run: |
+          # 如果 feeds.conf.default 已经有了 passwall，先删掉防止冲突
+          sed -i '/passwall/d' feeds.conf.default
+          # 重新注入最新的 Passwall 官方源
+          echo "src-git passwall https://github.com/xiaorouji/openwrt-passwall.git;main" >> feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: 准备配置文件
         run: |
           [ -e .config ] && cp .config .config.bak
-          # 确保所有的依赖关系都自动补齐
+          # 这一步非常重要，它会自动补齐你 .config 里勾选插件的所有依赖
           make defconfig
 
       - name: 下载源码包
         run: make download -j8
 
-      - name: 开始编译固件
+      - name: 开始核心编译
         run: |
-          echo "正在为你编译 N60 Pro 专用安全固件，请耐心等待..."
+          echo "正在为你编译 N60 Pro 专用安全固件..."
+          # 先尝试多线程编译，如果失败则切换单线程并输出详细报错
           make -j$(nproc) || make -j1 V=s
 
-      - name: 上传编译出的固件
+      - name: 整理并上传固件
         uses: actions/upload-artifact@v4
         with:
-          name: Qubes_Secure_N60Pro
+          name: Qubes_Router_N60Pro
           path: bin/targets/mediatek/filogic/*.bin
