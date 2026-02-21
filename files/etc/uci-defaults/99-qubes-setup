@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# 1. 物理层伪装：锁定所有流出流量的 TTL 为 64 (让 5G 基站认为你是手机)
+echo "nft add rule inet fw4 mangle_postrouting oifname \"eth1\" ip ttl set 64" >> /etc/rc.local
+echo "nft add rule inet fw4 mangle_postrouting oifname \"eth1\" ip6 hoplimit set 64" >> /etc/rc.local
+
+# 2. 设置默认登录密码为 root
+echo "root:root" | chpasswd
+
+# 3. 开启 WAN 口访问后台 (允许你从 5G CPE 侧远程登录路由器)
+uci set firewall.remote_admin=rule
+uci set firewall.remote_admin.name='Allow-Admin'
+uci set firewall.remote_admin.src='wan'
+uci set firewall.remote_admin.dest_port='80 443'
+uci set firewall.remote_admin.proto='tcp'
+uci set firewall.remote_admin.target='ACCEPT'
+uci commit firewall
+
+exit 0
