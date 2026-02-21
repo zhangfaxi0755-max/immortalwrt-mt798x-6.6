@@ -15,31 +15,30 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential clang flex bison g++ gawk gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev
 
-      - name: 更新基础源
+      - name: 彻底清理并更新源
         run: |
+          # 强制删除 feeds.conf.default 里的 passwall 引用
+          sed -i '/passwall/d' feeds.conf.default
+          # 更新基础源
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 注入 .config 配置
+      - name: 注入配置并补齐
         run: |
           if [ -f .config ]; then
-            echo "正在应用极简安全配置..."
-            # 补齐依赖并生成最终配置
             make defconfig
           else
-            echo "错误: 未找到 .config 文件!"
+            echo "Error: .config not found"
             exit 1
           fi
 
-      - name: 下载源码包
+      - name: 下载源码
         run: make download -j8
 
-      - name: 编译极简地基固件
-        run: |
-          echo "正在为你编译 N60 Pro 极简底座，预计 40 分钟完成..."
-          make -j$(nproc) || make -j1 V=s
+      - name: 编译地基固件
+        run: make -j$(nproc) || make -j1 V=s
 
-      - name: 整理并上传
+      - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: Qubes_Base_N60Pro
