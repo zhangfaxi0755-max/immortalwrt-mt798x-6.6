@@ -1,0 +1,41 @@
+name: Build Qubes-Secure-Router
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检查分支
+        uses: actions/checkout@v4
+
+      - name: 安装编译环境
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang flex bison g++ gawk gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev
+
+      - name: 更新插件源
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: 准备配置文件
+        run: |
+          [ -e .config ] && cp .config .config.bak
+          # 确保所有的依赖关系都自动补齐
+          make defconfig
+
+      - name: 下载源码包
+        run: make download -j8
+
+      - name: 开始编译固件
+        run: |
+          echo "正在为你编译 N60 Pro 专用安全固件，请耐心等待..."
+          make -j$(nproc) || make -j1 V=s
+
+      - name: 上传编译出的固件
+        uses: actions/upload-artifact@v4
+        with:
+          name: Qubes_Secure_N60Pro
+          path: bin/targets/mediatek/filogic/*.bin
